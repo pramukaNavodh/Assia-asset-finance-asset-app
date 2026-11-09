@@ -16,6 +16,14 @@ class AuthFailure implements Exception {
   @override
   String toString() => message;
 }
+class UserProfile {
+  const UserProfile({required this.displayName, required this.username, required this.email});
+
+  final String displayName;
+  final String? username;
+  final String email;
+}
+
 //firebase auth conf
 class AuthService {
   AuthService({
@@ -29,6 +37,8 @@ class AuthService {
   final FirebaseAuth _auth;
   final FirebaseFirestore _db;
   final GoogleSignIn _google;
+  bool get isPasswordAccount =>
+      _auth.currentUser?.providerData.any((p) => p.providerId == 'password') ?? false;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
@@ -181,6 +191,111 @@ class AuthService {
     try {
       await user?.delete();
     } catch (_) {}
+  }
+  Future<UserProfile?> loadProfile() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    String? username;
+    String name = user.displayName ?? '';
+    try {
+      final data = (await _db.collection('users').doc(user.uid).get()).data();
+      username = data?['username'] as String?;
+      name = (data?['displayName'] as String?) ?? name;
+    } on FirebaseException {
+      // Offline: fall back to what Firebase Auth already knows.
+    }
+    return UserProfile(displayName: name, username: username, email: user.email ?? '');
+  }
+
+  /// Updates the display name and (for email accounts) the username.
+  Future<void> updateProfile({required String displayName, String? username}) async {
+    final user = _auth.currentUser;
+    if (user == null) throw const AuthFailure('Please sign in again.');
+    final newName = displayName.trim();
+    final newUsername = username?.trim().toLowerCase();
+
+    try {
+      final userRef = _db.collection('users').doc(user.uid);
+      final oldUsername = (await userRef.get()).data()?['username'] as String?;
+      final updates = <String, dynamic>{'displayName': newName};
+      final batch = _db.batch();
+
+      if (newUsername != null && newUsername.isNotEmpty && newUsername != oldUsername) {
+        final taken = await _db.collection('usernames').doc(newUsername).get();
+        if (taken.exists) throw const AuthFailure('That username is already taken.');
+        if (oldUsername != null) batch.delete(_db.collection('usernames').doc(oldUsername));
+        batch.set(_db.collection('usernames').doc(newUsername),
+            {'uid': user.uid, 'email': (user.email ?? '').toLowerCase()});
+        updates['username'] = newUsername;
+      }
+      batch.set(userRef, updates, SetOptions(merge: true));
+      await batch.commit();
+
+      await user.updateDisplayName(newName);
+      await user.reload();
+    } on FirebaseAuthException catch (e) {
+      throw AuthFailure(_friendlyMessage(e));
+    } on FirebaseException {
+      throw const AuthFailure('Could not save your changes. Please try again.');
+    }
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null) throw const AuthFailure('Please sign in again.');
+    try {
+      // Firebase requires a fresh login before sensitive changes.
+      await user.reauthenticateWithCredential(
+          EmailAuthProvider.credential(email: email, password: currentPassword));
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      final wrong = e.code == 'wrong-password' || e.code == 'invalid-credential';
+      throw AuthFailure(wrong ? 'Your current password is incorrect.' : _friendlyMessage(e));
+    }
+  }
+
+  /// Permanently deletes the account and its profile documents.
+  Future<void> deleteAccount({String? password}) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    try {
+      if (isPasswordAccount) {
+        if (password == null || password.isEmpty) {
+          throw const AuthFailure('Enter your password to continue.');
+        }
+        await user.reauthenticateWithCredential(
+            EmailAuthProvider.credential(email: user.email ?? '', password: password));
+      } else {
+        final account = await _google.signIn();
+        if (account == null) throw const AuthFailure('Google confirmation was cancelled.');
+        final g = await account.authentication;
+        await user.reauthenticateWithCredential(
+            GoogleAuthProvider.credential(accessToken: g.accessToken, idToken: g.idToken));
+      }
+
+      final userRef = _db.collection('users').doc(user.uid);
+      final username = (await userRef.get()).data()?['username'] as String?;
+      final batch = _db.batch()..delete(userRef);
+      if (username != null && username.isNotEmpty) {
+        batch.delete(_db.collection('usernames').doc(username));
+      }
+      await batch.commit();
+      await user.delete();
+      try {
+        await _google.signOut();
+      } catch (_) {}
+    } on FirebaseAuthException catch (e) {
+      final wrong = e.code == 'wrong-password' || e.code == 'invalid-credential';
+      throw AuthFailure(wrong ? 'Incorrect password.' : _friendlyMessage(e));
+    } on PlatformException {
+      throw const AuthFailure('Google confirmation failed. Please try again.');
+    } on FirebaseException {
+      throw const AuthFailure('Could not delete the account. Please try again.');
+    }
   }
 
   String _friendlyMessage(FirebaseAuthException e) {

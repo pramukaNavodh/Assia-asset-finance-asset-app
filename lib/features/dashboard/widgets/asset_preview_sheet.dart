@@ -9,6 +9,8 @@ import '../../../core/utils/formatters.dart';
 import '../models/asset_model.dart';
 import '../models/branch_model.dart';
 import 'category_badge.dart';
+import '../../assets/screens/asset_detail_screen.dart';
+import '../../../core/widgets/primary_button.dart';
 
 //Quick look at an asset
 void showAssetPreview(BuildContext context, Asset asset) {
@@ -18,7 +20,7 @@ void showAssetPreview(BuildContext context, Asset asset) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (_) => Padding(
+    builder: (sheetContext) => Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -43,9 +45,13 @@ void showAssetPreview(BuildContext context, Asset asset) {
           _InfoRow('Value', Formatters.currencyFull(asset.price)),
           _InfoRow('Acquired', Formatters.shortDate(asset.dateObtained)),
           const SizedBox(height: 12),
-          const Text(
-            'Full asset details open soon.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          PrimaryButton(
+            label: 'View full details',
+            icon: Icons.open_in_new_rounded,
+            onPressed: () {
+              Navigator.pop(sheetContext);
+              openAssetDetail(context, asset.id); // outer context has the providers
+            },
           ),
         ],
       ),

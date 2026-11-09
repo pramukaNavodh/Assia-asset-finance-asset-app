@@ -3,6 +3,8 @@
 //libraries
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 //internal resource files
 import '../data/asset_repository.dart';
@@ -33,6 +35,22 @@ class DashboardProvider extends ChangeNotifier {
   String? _selectedBranchId; // null = all branches
   String _query = '';
 
+  List<Asset> get allAssets => _all;
+
+  Asset? assetById(String id) {
+    for (final a in _all) {
+      if (a.id == id) return a;
+    }
+    return null;
+  }
+
+  Future<void> updateAsset(Asset asset,
+      {required Map<int, File> newImages, required List<String?> keptUrls}) =>
+      _repository.updateAsset(asset, newImages: newImages, keptUrls: keptUrls);
+
+  Future<void> deleteAsset(Asset asset) => _repository.deleteAsset(asset);
+
+
   DashboardStatus get status => _status;
   String? get selectedBranchId => _selectedBranchId;
   List<Asset> get scopedAssets => _scoped;
@@ -40,6 +58,9 @@ class DashboardProvider extends ChangeNotifier {
   bool get isSearching => _query.isNotEmpty;
   String get scopeLabel =>
       Branches.byId(_selectedBranchId)?.name ?? 'All branches';
+
+  String _errorMessage = '';
+  String get errorMessage => _errorMessage;
 
   //stat section
 
@@ -84,16 +105,43 @@ class DashboardProvider extends ChangeNotifier {
     await _subscription?.cancel();
     _subscription = _repository.watchAssets().listen(
           (assets) {
-        _all = assets;
-        _recompute();
-        _status = DashboardStatus.ready;
+        try {
+          _all = assets;
+          _recompute();
+          _status = DashboardStatus.ready;
+        } catch (e) {
+          debugPrint('Dashboard data error: $e');
+          _errorMessage = 'Some asset data could not be read.';
+          _status = DashboardStatus.error;
+        }
         notifyListeners();
       },
-      onError: (Object _) {
+      onError: (Object e) {
+        debugPrint('Dashboard load failed: $e');
+        _errorMessage = _describe(e);
         _status = DashboardStatus.error;
         notifyListeners();
       },
     );
+  }
+  Future<void> addAsset(
+      Asset asset, {
+        required List<File> images,
+        required String userId,
+        required String userName,
+      }) =>
+      _repository.addAsset(asset, images: images, userId: userId, userName: userName);
+
+  String _describe(Object e) {
+    if (e is FirebaseException) {
+      if (e.code == 'permission-denied') {
+        return 'Firestore refused access. Publish rules that let signed-in users read "assets".';
+      }
+      if (e.code == 'unavailable') {
+        return 'No connection to Firebase. Check your internet and try again.';
+      }
+    }
+    return 'Something went wrong while loading assets.';
   }
 
   void selectBranch(String? branchId) {

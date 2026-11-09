@@ -1,19 +1,25 @@
-//base layer for the dashboard
+import 'dart:async';
 
-//libraries
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-//internal resource files
 import '../../../core/constants/app_config.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/placeholder_screen.dart';
+import '../../assets/screens/add_asset_screen.dart';
+import '../../assets/screens/assets_list_screen.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../notifications/models/app_notification.dart';
+import '../../notifications/providers/notifications_provider.dart';
+import '../../notifications/screens/notifications_screen.dart';
+import '../../notifications/services/push_service.dart';
 import '../../profile/profile_screen.dart';
+import '../../reports/screens/reports_screen.dart';
+import '../../../core/widgets/app_snackbar.dart';
 import '../data/asset_repository.dart';
 import '../providers/dashboard_provider.dart';
 import 'dashboard_screen.dart';
 
-
+/// App frame after sign-in: bottom navigation + docked "Add asset" button.
 class MainShell extends StatelessWidget {
   const MainShell({super.key});
 
@@ -23,8 +29,16 @@ class MainShell extends StatelessWidget {
         ? DemoAssetRepository()
         : FirestoreAssetRepository();
 
-    return ChangeNotifierProvider(
-      create: (_) => DashboardProvider(repository),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => DashboardProvider(repository)),
+        ChangeNotifierProvider(
+          create: (ctx) => NotificationsProvider(
+            userId: ctx.read<AuthProvider>().user?.uid ?? '',
+            enabled: !AppConfig.useDemoData,
+          ),
+        ),
+      ],
       child: const _ShellView(),
     );
   }
@@ -39,20 +53,39 @@ class _ShellView extends StatefulWidget {
 
 class _ShellViewState extends State<_ShellView> {
   int _index = 0;
+  StreamSubscription<AppNotification>? _incoming;
+
+  @override
+  void initState() {
+    super.initState();
+    // Banner when a colleague's activity arrives while the app is open.
+    _incoming = context.read<NotificationsProvider>().incoming.listen((n) {
+      if (mounted) AppSnackBar.show(context, '${n.title}: ${n.body}');
+    });
+    PushService.init();
+  }
+
+  @override
+  void dispose() {
+    _incoming?.cancel();
+    super.dispose();
+  }
 
   void _go(int index) => setState(() => _index = index);
 
-  void _push(IconData icon, String title, String message) {
-    Navigator.of(context).push(
+  Future<void> _openAddAsset() async {
+    final dashboard = context.read<DashboardProvider>();
+    final added = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => PlaceholderScreen(
-          icon: icon,
-          title: title,
-          message: message,
-          showAppBar: true,
+        builder: (_) => ChangeNotifierProvider.value(
+          value: dashboard,
+          child: const AddAssetScreen(),
         ),
       ),
     );
+    if (added == true && mounted) {
+      AppSnackBar.show(context, 'Asset added successfully.');
+    }
   }
 
   @override
@@ -64,32 +97,16 @@ class _ShellViewState extends State<_ShellView> {
           DashboardScreen(
             onOpenProfile: () => _go(3),
             onSeeAllAssets: () => _go(1),
-            onOpenNotifications: () => _push(
-              Icons.notifications_none_rounded,
-              'Notifications',
-              'Alerts for new assets and vehicle tracking will appear here and are kept for 7 days. Coming in Phase 8.',
-            ),
+            onOpenNotifications: () => openNotifications(context),
           ),
-          const PlaceholderScreen(
-            icon: Icons.inventory_2_outlined,
-            title: 'All assets',
-            message: 'Browse, search and edit every asset here. Coming in Phase 5.',
-          ),
-          const PlaceholderScreen(
-            icon: Icons.bar_chart_rounded,
-            title: 'Reports',
-            message: 'Generate and export asset reports. Coming in Phase 6.',
-          ),
+          AssetsListScreen(onAddAsset: _openAddAsset),
+          const ReportsScreen(),
           const ProfileScreen(),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _push(
-          Icons.add_box_outlined,
-          'Add asset',
-          'The Add Asset form (details, photos and map location) arrives in Phase 4.',
-        ),
+        onPressed: _openAddAsset,
         tooltip: 'Add asset',
         backgroundColor: AppColors.accent,
         foregroundColor: AppColors.primaryDark,
@@ -121,7 +138,7 @@ class _ShellViewState extends State<_ShellView> {
               selected: _index == 1,
               onTap: () => _go(1),
             ),
-            const SizedBox(width: 72), // space for the docked button
+            const SizedBox(width: 72),
             _NavItem(
               label: 'Reports',
               icon: Icons.bar_chart_outlined,

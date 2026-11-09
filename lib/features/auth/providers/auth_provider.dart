@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
+import '../../notifications/services/push_service.dart';
 
 
 enum AuthStatus {
@@ -37,6 +38,9 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool _busy = false; // an explicit sign-in/sign-up is running
   bool _biometricEnabled = false;
   DateTime? _pausedAt;
+  bool get biometricEnabled => _biometricEnabled;
+  bool get isPasswordAccount => _authService.isPasswordAccount;
+  String? get photoUrl => _authService.currentUser?.photoURL;
 
   AuthStatus get status => _status;
   User? get user => _authService.currentUser;
@@ -55,6 +59,51 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
         () => _authService.signInWithIdentifier(
         identifier: identifier, password: password),
   );
+  Future<UserProfile?> loadProfile() => _authService.loadProfile();
+
+  Future<void> updateProfile({required String displayName, String? username}) async {
+    await _authService.updateProfile(displayName: displayName, username: username);
+    notifyListeners(); // greeting and profile pick up the new name
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) =>
+      _authService.changePassword(
+          currentPassword: currentPassword, newPassword: newPassword);
+
+  /// Re-confirms the fingerprint and refreshes the saved setting.
+  Future<BiometricResult> reRegisterBiometrics() async {
+    final uid = user?.uid;
+    if (uid == null) return BiometricResult.error;
+    final result = await _biometric.authenticate(
+        reason: 'Confirm your fingerprint to refresh biometric unlock');
+    if (result == BiometricResult.success) {
+      await _biometric.setEnabled(uid, true);
+      _biometricEnabled = true;
+      notifyListeners();
+    }
+    return result;
+  }
+
+  void lockNow() {
+    if (_biometricEnabled && _status == AuthStatus.unlocked) {
+      _setStatus(AuthStatus.locked);
+    }
+  }
+
+  Future<void> deleteAccount({String? password}) async {
+    final uid = user?.uid;
+    await _authService.deleteAccount(password: password);
+    if (uid != null) {
+      try {
+        await _biometric.setEnabled(uid, false);
+      } catch (_) {}
+    }
+    _biometricEnabled = false;
+    _setStatus(AuthStatus.signedOut);
+  }
 
   Future<void> signUp({
     required String email,
@@ -79,6 +128,7 @@ class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
       _authService.sendPasswordReset(email);
 
   Future<void> signOut() async {
+    await PushService.unsubscribe();
     await _authService.signOut();
     _biometricEnabled = false;
     _setStatus(AuthStatus.signedOut);

@@ -49,7 +49,7 @@ class _AssetsMapCardState extends State<AssetsMapCard> {
     }
   }
 
-  ///Zoom the map to every visible asset fits on screen
+  //Zoom the map to every visible asset fits on screen
   void _fitCamera() {
     if (!_ready) return;
     final located = _located;

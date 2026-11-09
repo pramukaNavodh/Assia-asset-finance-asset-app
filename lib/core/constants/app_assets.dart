@@ -3,6 +3,7 @@ class AppAssets {
   AppAssets._();
 
   static const logo = 'assets/images/aaf_logo.png';
+  static const mainLogo = 'assets/images/main_logo.png';
   static const google = 'assets/icons/google.png';
   static const fingerprint = 'assets/icons/fingerprint.png';
   static const catFurniture = 'assets/icons/cat_furniture.png';

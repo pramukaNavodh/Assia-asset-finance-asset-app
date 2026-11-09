@@ -53,7 +53,12 @@ class DashboardScreen extends StatelessWidget {
           if (p.status == DashboardStatus.loading)
             const SliverToBoxAdapter(child: DashboardSkeleton())
           else if (p.status == DashboardStatus.error)
-            SliverToBoxAdapter(child: _ErrorState(onRetry: p.load))
+            SliverToBoxAdapter(
+              child: _ErrorState(
+                message: p.errorMessage ?? 'Something went wrong',
+                onRetry: p.load,
+              ),
+            )
           else ...[
               SliverToBoxAdapter(
                 child: BranchSelector(
@@ -135,8 +140,12 @@ class DashboardScreen extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.onRetry});
+  const _ErrorState({
+    required this.message,
+    required this.onRetry,
+  });
 
+  final String message;          // ← add this
   final VoidCallback onRetry;
 
   @override
@@ -148,13 +157,15 @@ class _ErrorState extends StatelessWidget {
           const Icon(Icons.cloud_off_rounded,
               size: 56, color: AppColors.textMuted),
           const SizedBox(height: 16),
-          const Text('Could not load assets',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
           const Text(
-            'Check your internet connection and try again.',
+            'Could not load assets',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(                          // ← changed from const Text
+            message,                     // ← shows the real error
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textMuted),
+            style: const TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 20),
           FilledButton.icon(

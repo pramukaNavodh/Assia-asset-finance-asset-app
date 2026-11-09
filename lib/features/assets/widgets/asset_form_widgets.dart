@@ -71,10 +71,12 @@ class PhotoSlots extends StatelessWidget {
     super.key,
     required this.photos,
     required this.onChanged,
+    this.existingUrls = const [null, null],
     this.showError = false,
   });
 
   final List<File?> photos;
+  final List<String?> existingUrls;          // ← new
   final void Function(int index, File? file) onChanged;
   final bool showError;
 
@@ -108,8 +110,11 @@ class PhotoSlots extends StatelessWidget {
       if (picked != null) onChanged(index, File(picked.path));
     } on PlatformException {
       if (context.mounted) {
-        AppSnackBar.show(context, 'Could not open the camera or gallery. Check app permissions.',
-            isError: true);
+        AppSnackBar.show(
+          context,
+          'Could not open the camera or gallery. Check app permissions.',
+          isError: true,
+        );
       }
     }
   }
@@ -130,8 +135,10 @@ class PhotoSlots extends StatelessWidget {
         if (showError)
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('Please add both photos',
-                style: TextStyle(color: AppColors.error, fontSize: 12)),
+            child: Text(
+              'Please add both photos',
+              style: TextStyle(color: AppColors.error, fontSize: 12),
+            ),
           ),
       ],
     );
@@ -139,6 +146,9 @@ class PhotoSlots extends StatelessWidget {
 
   Widget _slot(BuildContext context, int index) {
     final file = photos[index];
+    final url = existingUrls[index];
+    final hasImage = file != null || (url != null && url.isNotEmpty);
+
     return AspectRatio(
       aspectRatio: 1,
       child: GestureDetector(
@@ -149,31 +159,47 @@ class PhotoSlots extends StatelessWidget {
             color: AppColors.fieldFill,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-                color: showError && file == null ? AppColors.error : AppColors.border),
+              color: showError && !hasImage ? AppColors.error : AppColors.border,
+            ),
           ),
-          child: file == null
+          child: !hasImage
               ? Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.add_a_photo_outlined, color: AppColors.primary, size: 30),
+              const Icon(Icons.add_a_photo_outlined,
+                  color: AppColors.primary, size: 30),
               const SizedBox(height: 8),
-              Text(_labels[index],
-                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              Text(
+                _labels[index],
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textMuted),
+              ),
             ],
           )
               : Stack(
             fit: StackFit.expand,
             children: [
-              Image.file(file, fit: BoxFit.cover),
+              // Prefer local file, otherwise show the existing network image
+              if (file != null)
+                Image.file(file, fit: BoxFit.cover)
+              else
+                Image.network(
+                  url!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Icon(Icons.broken_image_outlined),
+                  ),
+                ),
               Positioned(
                 top: 6,
                 right: 6,
                 child: GestureDetector(
-                  onTap: () => onChanged(index, null),
+                  onTap: () => onChanged(index, null), // parent clears both file + url
                   child: const CircleAvatar(
                     radius: 14,
                     backgroundColor: Colors.black54,
-                    child: Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                    child: Icon(Icons.close_rounded,
+                        size: 16, color: Colors.white),
                   ),
                 ),
               ),
