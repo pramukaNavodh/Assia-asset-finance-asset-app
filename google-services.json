@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "637638163742",
+    "project_id": "aaf-asset-app",
+    "storage_bucket": "aaf-asset-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:637638163742:android:e923b6005f9d86eb965d0f",
+        "android_client_info": {
+          "package_name": "com.example.aafassets"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "637638163742-96m0ip4v1ob3gtaj78ekcp7ef6mh3udj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCruKR82mp-C6XUK_rR2Ml9tr65qshUmbk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "637638163742-96m0ip4v1ob3gtaj78ekcp7ef6mh3udj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "637638163742-6tc9s54b4d0lk5ovgffev9g6e0l441pe.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aafassets"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:637638163742:android:24ce9c7ae6bb159c965d0f",
+        "android_client_info": {
+          "package_name": "com.pramuka.aafassets"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "637638163742-96m0ip4v1ob3gtaj78ekcp7ef6mh3udj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCruKR82mp-C6XUK_rR2Ml9tr65qshUmbk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "637638163742-96m0ip4v1ob3gtaj78ekcp7ef6mh3udj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "637638163742-6tc9s54b4d0lk5ovgffev9g6e0l441pe.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.aafassets"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
