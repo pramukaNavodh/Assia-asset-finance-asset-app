@@ -2,11 +2,12 @@
 
 //libraries
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 //internal color asset file
 import '../theme/app_colors.dart';
 
-// Rounded and show hide passwrods
+// Rounded and show hide passwords
 class AppTextField extends StatefulWidget {
   const AppTextField({
     super.key,
@@ -22,6 +23,9 @@ class AppTextField extends StatefulWidget {
     this.onSubmitted,
     this.onChanged,
     this.isPassword = false,
+    this.maxLines = 1,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -36,6 +40,9 @@ class AppTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
   final bool isPassword;
+  final int maxLines;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -63,6 +70,9 @@ class _AppTextFieldState extends State<AppTextField> {
       onFieldSubmitted: widget.onSubmitted,
       onChanged: widget.onChanged,
       autocorrect: false,
+      maxLines: widget.isPassword ? 1 : widget.maxLines,
+      textCapitalization: widget.textCapitalization,
+      inputFormatters: widget.inputFormatters,
       enableSuggestions: !widget.isPassword,
       decoration: InputDecoration(
         labelText: widget.label,

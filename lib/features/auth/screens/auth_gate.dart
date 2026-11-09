@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/safe_asset_image.dart';
-import '../../home/home_placeholder_screen.dart';
+import '../../dashboard/screens/main_shell.dart';
 import '../providers/auth_provider.dart';
 import 'biometric_lock_screen.dart';
 import 'register_biometrics_screen.dart';
@@ -31,7 +31,7 @@ class AuthGate extends StatelessWidget {
       const RegisterBiometricsScreen(key: ValueKey('register-bio')),
       AuthStatus.locked => const BiometricLockScreen(key: ValueKey('lock')),
       AuthStatus.unlocked =>
-      const HomePlaceholderScreen(key: ValueKey('home')),
+      const MainShell(key: ValueKey('home')),
     };
 
     return AnimatedSwitcher(

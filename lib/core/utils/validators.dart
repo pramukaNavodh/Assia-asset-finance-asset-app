@@ -54,4 +54,19 @@ class Validators {
     if (RegExp(r'[^A-Za-z0-9]').hasMatch(value)) score++;
     return score;
   }
+  static String? amount(String? v, {String field = 'Amount', bool required = true}) {
+    final t = v?.trim() ?? '';
+    if (t.isEmpty) return required ? '$field is required' : null;
+    final n = double.tryParse(t);
+    if (n == null || n < 0) return 'Enter a valid amount';
+    return null;
+  }
+
+  static String? wholeNumber(String? v,
+      {required String field, int min = 1, int max = 50}) {
+    final n = int.tryParse(v?.trim() ?? '');
+    if (n == null) return '$field is required';
+    if (n < min || n > max) return 'Use $min to $max';
+    return null;
+  }
 }
